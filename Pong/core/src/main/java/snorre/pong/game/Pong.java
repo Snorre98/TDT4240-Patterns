@@ -39,8 +39,11 @@ public class Pong extends ApplicationAdapter {
     private int scoreLeft = 0;
     private int scoreRight = 0;
 
+    private InputManager inputManager;
+
     @Override
     public void create() {
+        inputManager = InputManager.getInstance();
         shapeRenderer = new ShapeRenderer();
         batch = new SpriteBatch();
         font = new BitmapFont();
@@ -65,7 +68,7 @@ public class Pong extends ApplicationAdapter {
 
         // Random initial direction
         float angle = (float)(Math.random() * Math.PI/4 + Math.PI/8);
-        if (Math.random() > 0.5f) angle += Math.PI;
+        if (Math.random() > 0.5f) angle += (float) Math.PI;
 
         ballVelocity = new Vector2((float)Math.cos(angle) * BALL_SPEED, (float)Math.sin(angle) * BALL_SPEED);
     }
@@ -132,7 +135,6 @@ public class Pong extends ApplicationAdapter {
         if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.SPACE)) {
             restartGame();
         }
-
     }
 
     private void restartGame() {
@@ -179,16 +181,18 @@ public class Pong extends ApplicationAdapter {
         float screenWidth = Gdx.graphics.getWidth();
         float screenHeight = Gdx.graphics.getHeight();
 
-        if (Gdx.input.isKeyPressed(com.badlogic.gdx.Input.Keys.W)) {
+        inputManager.update();
+
+        if (inputManager.isPlayerTwoUp()) {
             paddleLeft.y += PADDLE_SPEED * deltaTime;
         }
-        if (Gdx.input.isKeyPressed(com.badlogic.gdx.Input.Keys.S)) {
+        if (inputManager.isPlayerTwoDown()) {
             paddleLeft.y -= PADDLE_SPEED * deltaTime;
         }
-        if (Gdx.input.isKeyPressed(com.badlogic.gdx.Input.Keys.UP)) {
+        if (inputManager.isPlayerOneUp()) {
             paddleRight.y += PADDLE_SPEED * deltaTime;
         }
-        if (Gdx.input.isKeyPressed(com.badlogic.gdx.Input.Keys.DOWN)) {
+        if (inputManager.isPlayerOneDown()) {
             paddleRight.y -= PADDLE_SPEED * deltaTime;
         }
 
