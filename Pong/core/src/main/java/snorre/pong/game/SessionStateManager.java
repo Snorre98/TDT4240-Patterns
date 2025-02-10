@@ -2,7 +2,7 @@ package snorre.pong.game;
 import com.badlogic.gdx.math.Rectangle;
 public class SessionStateManager {
 
-    private static final int WINNING_SCORE = 21;
+    private static final int WINNING_SCORE = 3;
     private int leftScore;
     private int rightScore;
     private boolean isGameOver;
@@ -12,11 +12,16 @@ public class SessionStateManager {
 
     private static SessionStateManager instance;
 
+    private GameHistory gameHistory;
+    private boolean resultRecorded;
+
     private SessionStateManager(){
         leftScore = 0;
         rightScore = 0;
         isGameOver = false;
         winner = "";
+        resultRecorded = false;
+        gameHistory = new GameHistory();
     }
 
     public static synchronized SessionStateManager getInstance(){
@@ -57,9 +62,19 @@ public class SessionStateManager {
         if (leftScore >= WINNING_SCORE) {
             setGameOver();
             setWinner("Left Player");
+            if (!resultRecorded) {
+                GameResult result = new GameResult(winner, leftScore, rightScore);
+                gameHistory.onGameComplete(result);
+                resultRecorded = true;
+            }
         } else if (rightScore >= WINNING_SCORE) {
             setGameOver();
             setWinner("Right Player");
+            if (!resultRecorded) {
+                GameResult result = new GameResult(winner, leftScore, rightScore);
+                gameHistory.onGameComplete(result);
+                resultRecorded = true;
+            }
         }
     }
 
@@ -88,8 +103,14 @@ public class SessionStateManager {
         rightScore = 0;
         isGameOver = false;
         winner = "";
+        resultRecorded = false;
         setStartNewRound();
     }
+
+    public GameHistory getGameHistory() {
+        return gameHistory;
+    }
+
     public String getWinner(){
         return winner;
     }

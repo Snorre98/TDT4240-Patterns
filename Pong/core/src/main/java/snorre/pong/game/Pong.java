@@ -34,13 +34,18 @@ public class Pong extends ApplicationAdapter {
 
     private SessionStateManager sessionStateManager;
 
+    private GameHistoryDisplay historyDisplay;
+
 
 
     @Override
     public void create() {
+        // First initialize managers
         inputManager = InputManager.getInstance();
         sessionStateManager = SessionStateManager.getInstance();
+        GameHistory gameHistory = sessionStateManager.getGameHistory();
 
+        // Then initialize graphics resources
         shapeRenderer = new ShapeRenderer();
         batch = new SpriteBatch();
         font = new BitmapFont();
@@ -50,6 +55,10 @@ public class Pong extends ApplicationAdapter {
         font.getData().setScale(2);
         gameOverFont.getData().setScale(3);
 
+        // Now create the history display after font and batch are initialized
+        historyDisplay = new GameHistoryDisplay(batch, font, gameHistory);
+
+        // Initialize game objects
         float screenHeight = Gdx.graphics.getHeight();
         paddleLeft = new Rectangle(50, screenHeight/2 - PADDLE_HEIGHT/2, PADDLE_WIDTH, PADDLE_HEIGHT);
         paddleRight = new Rectangle(Gdx.graphics.getWidth() - 50 - PADDLE_WIDTH, screenHeight/2 - PADDLE_HEIGHT/2, PADDLE_WIDTH, PADDLE_HEIGHT);
@@ -185,14 +194,17 @@ public class Pong extends ApplicationAdapter {
         ballVelocity.y = (float)Math.sin(bounceAngle) * BALL_SPEED;
     }
 
-    private void drawGameOverGraphic(float screenWidth, float screenHeight){
+    private void drawGameOverGraphic(float screenWidth, float screenHeight) {
+        // First draw the game over text
         String gameOverText = "GAME OVER\n" + sessionStateManager.getWinner() + " WINS!";
         layout.setText(gameOverFont, gameOverText);
         float textX = (screenWidth - layout.width) / 2;
         float textY = (screenHeight + layout.height) / 2;
         gameOverFont.draw(batch, gameOverText, textX, textY);
 
-        // Draw restart instruction
+        historyDisplay.render();
+
+        // Finally draw the restart instruction
         String restartText = "Press SPACE to play again";
         layout.setText(font, restartText);
         float restartX = (screenWidth - layout.width) / 2;
