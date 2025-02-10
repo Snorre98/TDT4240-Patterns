@@ -13,10 +13,10 @@ This project was generated with a template including simple application launcher
 - `html`: Web platform using GWT and WebGL. Supports only Java projects.
 
 ## Gradle
-
+``
 This project uses [Gradle](https://gradle.org/) to manage dependencies.
 The Gradle wrapper was included, so you can run Gradle tasks using `gradlew.bat` or `./gradlew` commands.
-Useful Gradle tasks and flags:
+Useful Gradle tasks and flags:``
 
 - `--continue`: when using this flag, errors will not stop the tasks from running.
 - `--daemon`: thanks to this flag, Gradle daemon will be used to run chosen tasks.

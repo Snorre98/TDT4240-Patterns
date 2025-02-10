@@ -29,21 +29,18 @@ public class Pong extends ApplicationAdapter {
     private static final float BALL_SIZE = 20;
     private static final float PADDLE_SPEED = 400;
     private static final float BALL_SPEED = 400;
-    private static final int WINNING_SCORE = 21;
-
-    // Game state
-    private boolean isGameOver = false;
-    private String winner = "";
-
-    // Scores
-    private int scoreLeft = 0;
-    private int scoreRight = 0;
 
     private InputManager inputManager;
+
+    private SessionStateManager sessionStateManager;
+
+
 
     @Override
     public void create() {
         inputManager = InputManager.getInstance();
+        sessionStateManager = SessionStateManager.getInstance();
+
         shapeRenderer = new ShapeRenderer();
         batch = new SpriteBatch();
         font = new BitmapFont();
@@ -57,20 +54,7 @@ public class Pong extends ApplicationAdapter {
         paddleLeft = new Rectangle(50, screenHeight/2 - PADDLE_HEIGHT/2, PADDLE_WIDTH, PADDLE_HEIGHT);
         paddleRight = new Rectangle(Gdx.graphics.getWidth() - 50 - PADDLE_WIDTH, screenHeight/2 - PADDLE_HEIGHT/2, PADDLE_WIDTH, PADDLE_HEIGHT);
 
-        resetBall();
-    }
-
-    private void resetBall() {
-        float screenWidth = Gdx.graphics.getWidth();
-        float screenHeight = Gdx.graphics.getHeight();
-
-        ball = new Rectangle(screenWidth/2 - BALL_SIZE/2, screenHeight/2 - BALL_SIZE/2, BALL_SIZE, BALL_SIZE);
-
-        // Random initial direction
-        float angle = (float)(Math.random() * Math.PI/4 + Math.PI/8);
-        if (Math.random() > 0.5f) angle += (float) Math.PI;
-
-        ballVelocity = new Vector2((float)Math.cos(angle) * BALL_SPEED, (float)Math.sin(angle) * BALL_SPEED);
+        serveBall();
     }
 
     @Override
@@ -79,7 +63,7 @@ public class Pong extends ApplicationAdapter {
         Gdx.gl.glClearColor(0, 0, 0, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-        if (!isGameOver) {
+        if (!sessionStateManager.isGameOver()) {
             // Update game logic
             update(Gdx.graphics.getDeltaTime());
         }
@@ -93,7 +77,7 @@ public class Pong extends ApplicationAdapter {
         shapeRenderer.rect(paddleRight.x, paddleRight.y, paddleRight.width, paddleRight.height);
 
         // Draw ball if game is not over
-        if (!isGameOver) {
+        if (!sessionStateManager.isGameOver()) {
             shapeRenderer.rect(ball.x, ball.y, ball.width, ball.height);
         }
 
@@ -105,76 +89,17 @@ public class Pong extends ApplicationAdapter {
         float screenHeight = Gdx.graphics.getHeight();
 
         // Left score
-        font.draw(batch, String.valueOf(scoreLeft), screenWidth/4, screenHeight - 50);
+        font.draw(batch, String.valueOf(sessionStateManager.getLeftScore()), screenWidth/4, screenHeight - 50);
 
         // Right score
-        font.draw(batch, String.valueOf(scoreRight), 3 * screenWidth/4, screenHeight - 50);
+        font.draw(batch, String.valueOf(sessionStateManager.getRightScore()), 3 * screenWidth/4, screenHeight - 50);
 
         // Draw game over message if game is over
-        if (isGameOver) {
+        if (sessionStateManager.isGameOver()) {
             drawGameOverGraphic(screenWidth, screenHeight);
         }
 
         batch.end();
-    }
-
-    private void drawGameOverGraphic(float screenWidth, float screenHeight){
-        String gameOverText = "GAME OVER\n" + winner + " WINS!";
-        layout.setText(gameOverFont, gameOverText);
-        float textX = (screenWidth - layout.width) / 2;
-        float textY = (screenHeight + layout.height) / 2;
-        gameOverFont.draw(batch, gameOverText, textX, textY);
-
-        // Draw restart instruction
-        String restartText = "Press SPACE to play again";
-        layout.setText(font, restartText);
-        float restartX = (screenWidth - layout.width) / 2;
-        font.draw(batch, restartText, restartX, textY - 120);
-
-        // Check for restart
-        if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.SPACE)) {
-            restartGame();
-        }
-    }
-
-    private void restartGame() {
-        scoreLeft = 0;
-        scoreRight = 0;
-        isGameOver = false;
-        winner = "";
-        resetBall();
-    }
-
-    public void ballPaddleCollision() {
-        ballVelocity.x = -ballVelocity.x * 1.1f; // Increase speed slightly
-        // Add some vertical velocity based on where the ball hits the paddle
-        Rectangle paddle = ball.overlaps(paddleLeft) ? paddleLeft : paddleRight;
-        float relativeIntersectY = (paddle.y + (paddle.height/2)) - (ball.y + (ball.height/2));
-        float normalizedRelativeIntersectY = relativeIntersectY/(paddle.height/2);
-        float bounceAngle = (float)(normalizedRelativeIntersectY * (5*Math.PI/12));
-        ballVelocity.y = (float)Math.sin(bounceAngle) * BALL_SPEED;
-    }
-
-    public void scoring(float screenWidth) {
-        if (ball.x + ball.width < 0) {
-            scoreRight++;
-            setWinner();
-            if (!isGameOver) resetBall();
-        } else if (ball.x > screenWidth) {
-            scoreLeft++;
-            setWinner();
-            if (!isGameOver) resetBall();
-        }
-    }
-
-    private void setWinner() {
-        if (scoreLeft >= WINNING_SCORE) {
-            isGameOver = true;
-            winner = "Left Player";
-        } else if (scoreRight >= WINNING_SCORE) {
-            isGameOver = true;
-            winner = "Right Player";
-        }
     }
 
     private void update(float deltaTime) {
@@ -214,7 +139,10 @@ public class Pong extends ApplicationAdapter {
             ballPaddleCollision();
         }
 
-        scoring(screenWidth);
+        sessionStateManager.updateSessionState(screenWidth, ball);
+        if(sessionStateManager.getStartNewRound()){
+            serveBall();
+        }
     }
 
     @Override
@@ -224,4 +152,56 @@ public class Pong extends ApplicationAdapter {
         font.dispose();
         gameOverFont.dispose();
     }
+
+    /*
+    * Helper methods
+    * */
+
+    private void serveBall() {
+        float screenWidth = Gdx.graphics.getWidth();
+        float screenHeight = Gdx.graphics.getHeight();
+
+        ball = new Rectangle(screenWidth/2 - BALL_SIZE/2, screenHeight/2 - BALL_SIZE/2, BALL_SIZE, BALL_SIZE);
+
+        // Random initial direction
+        float angle = (float)(Math.random() * Math.PI/4 + Math.PI/8);
+        if (Math.random() > 0.5f) angle += (float) Math.PI;
+
+        ballVelocity = new Vector2((float)Math.cos(angle) * BALL_SPEED, (float)Math.sin(angle) * BALL_SPEED);
+    }
+
+    private void startNewSession() {
+        sessionStateManager.resetSessionState();
+        serveBall();
+    }
+
+    private void ballPaddleCollision() {
+        ballVelocity.x = -ballVelocity.x * 1.1f; // Increase speed slightly
+        // Add some vertical velocity based on where the ball hits the paddle
+        Rectangle paddle = ball.overlaps(paddleLeft) ? paddleLeft : paddleRight;
+        float relativeIntersectY = (paddle.y + (paddle.height/2)) - (ball.y + (ball.height/2));
+        float normalizedRelativeIntersectY = relativeIntersectY/(paddle.height/2);
+        float bounceAngle = (float)(normalizedRelativeIntersectY * (5*Math.PI/12));
+        ballVelocity.y = (float)Math.sin(bounceAngle) * BALL_SPEED;
+    }
+
+    private void drawGameOverGraphic(float screenWidth, float screenHeight){
+        String gameOverText = "GAME OVER\n" + sessionStateManager.getWinner() + " WINS!";
+        layout.setText(gameOverFont, gameOverText);
+        float textX = (screenWidth - layout.width) / 2;
+        float textY = (screenHeight + layout.height) / 2;
+        gameOverFont.draw(batch, gameOverText, textX, textY);
+
+        // Draw restart instruction
+        String restartText = "Press SPACE to play again";
+        layout.setText(font, restartText);
+        float restartX = (screenWidth - layout.width) / 2;
+        font.draw(batch, restartText, restartX, textY - 120);
+
+        // Check for restart
+        if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.SPACE)) {
+            startNewSession();
+        }
+    }
+
 }
